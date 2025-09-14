@@ -25,10 +25,6 @@ jobs:
         uses: pozetroninc/github-action-get-latest-release@master
         with:
           repository: JulienChebance/Restfox.Light
-      - name: Display versions
-        run: |
-          echo "Distant version = ${{ steps.distantVersion.outputs.release }}"
-          echo "Local version = ${{ steps.localVersion.outputs.release }}"
 
       - name: Checkout Restfox sources
         if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
@@ -144,17 +140,9 @@ jobs:
           $filename = $filename -replace "[:/\\?]", ""
 
           # Générer la liste des ressources
-          # $resources = @()
-          # Get-ChildItem -Recurse -File -Exclude *.exe,*.cs,*.bat | Where-Object {
-          #   -not ($_.Name.StartsWith('.'))
-          # } | ForEach-Object {
-          #   $resources += ('/res:"' + ($_.FullName -replace '\\','/') + '"')
-          # }
-          # $resourcesArgs = $resources -join ' '
-          $resourcesArgs = '/res:' + ((Get-ChildItem -Path .\ -Recurse -Exclude '*.exe', '*.cs', '*.bat' -File -Name | Select-String -Pattern '^\.' -NotMatch | ForEach-Object { '\"' + $_ + '\"' -replace '\\', '/' }) -Join ' /res:')
+          $resources = '/res:' + ((Get-ChildItem -Path .\ -Recurse -Exclude '*.exe', '*.cs', '*.bat' -File -Name | Select-String -Pattern '^\.' -NotMatch | ForEach-Object { '"' + $_ + '"' -replace '\\', '/' }) -Join ' /res:')
 
-          Write-Host $pwd
-          Write-Host "Loaded resources: $resourcesArgs"
+          Write-Host "Loaded resources: $resources"
 
           $icon = ""
           if (Test-Path ".\favicon.ico") {
@@ -166,7 +154,7 @@ jobs:
           $csFiles = Get-ChildItem -Path . -Filter *.cs | ForEach-Object { $_.FullName }
           $csFilesArgs = $csFiles -join ' '
 
-          $cmd = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe -out:`"$outFile`" $csFilesArgs -optimize -nologo $icon $resourcesArgs"
+          $cmd = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe -out:`"$outFile`" $csFilesArgs -optimize -nologo $icon $resources"
           Write-Host "Running: $cmd"
           Invoke-Expression $cmd
 
