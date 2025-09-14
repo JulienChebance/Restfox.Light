@@ -3,6 +3,15 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "50 3 * * *"
+env:
+  APP_TITLE: "A powerful minimalistic HTTP client"
+  APP_PRODUCT: "Restfox"
+  APP_COPYRIGHT: "Copyright (c) 2022 Flawid D'Souza - Copyright (c) 2024+ Julien Chebance"
+  APP_SPAMODE: "true"
+  APP_STARTMAXIMIZED: "false"
+  APP_KIOSK: "false"
+  APP_MULTIPLEINSTANCE: "unique"
+  APP_STATELESS: "false"
 jobs:
   build:
     runs-on: windows-latest
@@ -49,7 +58,7 @@ jobs:
         run: npm run build
         working-directory: Restfox/packages/ui
 
-      - name: Add notranslate meta tag
+      - name: Add notranslate meta tag to index.html
         if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
         shell: pwsh
         run: |
@@ -86,6 +95,23 @@ jobs:
         run: |
           Expand-Archive -Path "web2exe.zip" -DestinationPath "Restfox/packages/ui/dist" -Force
 
+      - name: Customize AssemblyInfo.cs
+        shell: pwsh
+        run: |
+          $file = "Restfox/packages/ui/dist/AssemblyInfo.cs"
+          (Get-Content $file) `
+            -replace '(?<=AssemblyTitle\(")[^"]+(?="\))', "${{ env.APP_TITLE }}" `
+            -replace '(?<=AssemblyProduct\(")[^"]+(?="\))', "${{ env.APP_PRODUCT }}" `
+            -replace '(?<=AssemblyCopyright\(")[^"]+(?="\))', "${{ env.APP_COPYRIGHT }}" `
+            -replace '(?<=AssemblyVersion\(")[^"]+(?="\))', "${{ steps.distantVersion.outputs.release }}".TrimStart("v") `
+            -replace '(?<=AssemblyFileVersion\(")[^"]+(?="\))', "${{ steps.distantVersion.outputs.release }}.0".TrimStart("v") `
+            -replace '(?<=SPAmode\().*(?=\))', "${{ env.APP_SPAMODE }}" `
+            -replace '(?<=StartMaximized\().*(?=\))', "${{ env.APP_STARTMAXIMIZED }}" `
+            -replace '(?<=Kiosk\().*(?=\))', "${{ env.APP_KIOSK }}" `
+            -replace '(?<=MultipleInstance\(")[^"]+(?="\))', "${{ env.APP_MULTIPLEINSTANCE }}" `
+            -replace '(?<=Stateless\().*(?=\))', "${{ env.APP_STATELESS }}" `
+            | Set-Content $file
+            
       - name: List files in Restfox/packages/ui/dist
         shell: pwsh
         run: |
