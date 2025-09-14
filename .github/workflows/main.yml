@@ -8,7 +8,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - id: distant
-        uses: pozetroninc/github-action-get-latest-release@latest
+        uses: pozetroninc/github-action-get-latest-release@master
         with:
           repository: flawiddsouza/Restfox
       - name: Output
