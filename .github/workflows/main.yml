@@ -16,12 +16,87 @@ jobs:
         uses: pozetroninc/github-action-get-latest-release@master
         with:
           repository: JulienChebance/Restfox.Light
-      - name: Compare versions
+
+      - name: Checkout Restfox sources
         if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        uses: actions/checkout@v5
+        with:
+          repository: flawiddsouza/Restfox
+          path: Restfox
+
+      - name: Use Node.js
+        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        uses: actions/setup-node@v5
+        with:
+          node-version: latest
+
+      - name: Install dependencies
+        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        run: npm install
+        working-directory: Restfox/packages/ui
+
+      - name: Fix vulnerabilities
+        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        run: npm audit fix --force
+        working-directory: Restfox/packages/ui
+
+      - name: Build UI
+        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        run: npm run build
+        working-directory: Restfox/packages/ui
+
+      - name: Add notranslate meta tag
+        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        shell: pwsh
         run: |
-          echo 'No update'
-          exit 0
-      - name: Output
+          $indexPath = "Restfox/packages/ui/dist/index.html"
+          (Get-Content $indexPath) -replace '<head>', '<head><meta name="google" content="notranslate">' | Set-Content $indexPath
+
+      - name: Copy and modify LICENSE
+        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        shell: pwsh
         run: |
-          echo "${{ steps.distantVersion.outputs.release }}"
-          echo "${{ steps.localVersion.outputs.release }}"
+          $src = "Restfox/LICENSE"
+          $dest = "Restfox/packages/ui/dist/LICENSE.txt"
+          Copy-Item $src $dest -Force
+
+          $lines = Get-Content $dest
+          $output = @()
+          foreach ($line in $lines) {
+            $output += $line
+            if ($line -match '^Copyright') {
+              $output += 'Copyright (c) 2024+ Julien Chebance`n'
+            }
+          }
+          $output | Set-Content $dest
+
+      - name: Download web2exe
+        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/JulienChebance/web2exe/releases/latest/download/web2exe.zip" -OutFile "web2exe.zip"
+
+      - name: Extract web2exe
+        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        shell: pwsh
+        run: |
+          Expand-Archive -Path "web2exe.zip" -DestinationPath "Restfox/packages/ui/dist" -Force
+
+      - name: Run web2exe
+        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        run: Restfox/packages/ui/dist/run.bat
+
+      - name: Compress
+        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        uses: vimtor/action-zip@v1.2
+        with:
+          files: Restfox/packages/ui/dist/LICENSE.txt Restfox/packages/ui/dist/Restfox.exe
+          dest: Restfox.Light.zip
+
+      - name: Release
+        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.distantVersion.outputs.release }}
+          name: "Restfox Light ${{ steps.distantVersion.outputs.release }}"
+          files: Restfox.Light.zip
