@@ -86,6 +86,11 @@ jobs:
         run: |
           Expand-Archive -Path "web2exe.zip" -DestinationPath "Restfox/packages/ui/dist" -Force
 
+      - name: List files in Restfox/packages/ui
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path "Restfox/packages/ui"
+
       - name: Setup MSBuild and CSC
         if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
         uses: microsoft/setup-msbuild@v2
