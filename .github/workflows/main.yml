@@ -11,10 +11,16 @@ jobs:
         uses: pozetroninc/github-action-get-latest-release@master
         with:
           repository: flawiddsouza/Restfox
+          excludes: prerelease, draft
       - id: localVersion
         uses: pozetroninc/github-action-get-latest-release@master
         with:
           repository: JulienChebance/Restfox.Light
+      - name: Compare versions
+        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        run: |
+          echo 'No update'
+          exit 0
       - name: Output
         run: |
           echo "${{ steps.distantVersion.outputs.release }}"
