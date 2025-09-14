@@ -7,9 +7,15 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - id: distant
+      - id: distantVersion
         uses: pozetroninc/github-action-get-latest-release@master
         with:
           repository: flawiddsouza/Restfox
+      - id: localVersion
+        uses: pozetroninc/github-action-get-latest-release@master
+        with:
+          repository: JulienChebance/Restfox.Light
       - name: Output
-        run: echo "${{ steps.distant.outputs.release }}"
+        run: |
+          echo "${{ steps.distantVersion.outputs.release }}"
+          echo "${{ steps.localVersion.outputs.release }}"
