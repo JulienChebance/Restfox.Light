@@ -37,7 +37,7 @@ jobs:
 
       - name: Fix vulnerabilities
         if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
-        run: npm audit fix --force
+        run: npm audit fix
         working-directory: Restfox/packages/ui
 
       - name: Build UI
