@@ -86,9 +86,60 @@ jobs:
         run: |
           Expand-Archive -Path "web2exe.zip" -DestinationPath "Restfox/packages/ui/dist" -Force
 
+      - name: Setup MSBuild and CSC
+        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        uses: microsoft/setup-msbuild@v2
+
       - name: Run web2exe
         if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
-        run: Restfox/packages/ui/dist/run.bat
+        shell: pwsh
+        working-directory: Restfox/packages/ui
+        run: |
+          # Get product name from AssemblyInfo.cs as the file name
+          $filename = ""
+          Get-Content .\AssemblyInfo.cs | ForEach-Object {
+            if ($_ -match '^\[assembly:\s*AssemblyProduct\("(.+)"\)\]') {
+              $filename = $matches[1]
+            }
+          }
+          if ([string]::IsNullOrEmpty($filename)) {
+            $filename = "web2exe"
+          }
+
+          # Remove unauthorized characters
+          $filename = $filename -replace "[:/\\?]", ""
+
+          # Générer la liste des ressources
+          $resources = @()
+          Get-ChildItem -Recurse -File -Exclude *.exe,*.cs,*.bat | Where-Object {
+            -not ($_.Name.StartsWith('.'))
+          } | ForEach-Object {
+            $resources += ('/res:"' + ($_.FullName -replace '\\','/') + '"')
+          }
+          $resourcesArgs = $resources -join ' '
+
+          Write-Host "Loaded resources: $resourcesArgs"
+
+          $icon = ""
+          if (Test-Path ".\favicon.ico") {
+            $icon = "/win32icon:favicon.ico"
+          }
+
+          # Compilation avec CSC
+          $outFile = "$filename.exe"
+          $csFiles = Get-ChildItem -Path . -Filter *.cs | ForEach-Object { $_.FullName }
+          $csFilesArgs = $csFiles -join ' '
+
+          $cmd = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe -out:`"$outFile`" $csFilesArgs -optimize -nologo $icon $resourcesArgs"
+          Write-Host "Running: $cmd"
+          Invoke-Expression $cmd
+
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "The following file has been successfully created:"
+            Write-Host $outFile
+          } else {
+            Write-Error "CSC compilation failed with exit code $LASTEXITCODE"
+          }
 
       - name: Compress
         if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
