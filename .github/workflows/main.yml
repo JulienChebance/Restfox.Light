@@ -137,13 +137,14 @@ jobs:
           $filename = $filename -replace "[:/\\?]", ""
 
           # Générer la liste des ressources
-          $resources = @()
-          Get-ChildItem -Recurse -File -Exclude *.exe,*.cs,*.bat | Where-Object {
-            -not ($_.Name.StartsWith('.'))
-          } | ForEach-Object {
-            $resources += ('/res:"' + ($_.FullName -replace '\\','/') + '"')
-          }
-          $resourcesArgs = $resources -join ' '
+          # $resources = @()
+          # Get-ChildItem -Recurse -File -Exclude *.exe,*.cs,*.bat | Where-Object {
+          #   -not ($_.Name.StartsWith('.'))
+          # } | ForEach-Object {
+          #   $resources += ('/res:"' + ($_.FullName -replace '\\','/') + '"')
+          # }
+          # $resourcesArgs = $resources -join ' '
+          $resourcesArgs = '/res:' + ((Get-ChildItem -Path .\ -Recurse -Exclude '*.exe', '*.cs', '*.bat' -File -Name | Select-String -Pattern '^\.' -NotMatch | ForEach-Object { '\"' + $_ + '\"' -replace '\\', '/' }) -Join ' /res:')
 
           Write-Host "Loaded resources: $resourcesArgs"
 
