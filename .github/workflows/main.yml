@@ -35,6 +35,15 @@ jobs:
         run: npm install
         working-directory: Restfox/packages/ui
 
+      - name: Create git tag v0.40.0
+        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        shell: pwsh
+        run: |
+          cd Restfox
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag v0.40.0
+
       - name: Build UI
         if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
         run: npm run build
