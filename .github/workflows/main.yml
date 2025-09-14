@@ -89,7 +89,7 @@ jobs:
       - name: List files in Restfox/packages/ui
         shell: pwsh
         run: |
-          Get-ChildItem -Path "Restfox/packages/ui"
+          Get-ChildItem -Path "Restfox/packages/ui/dist"
 
       - name: Setup MSBuild and CSC
         if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
@@ -98,7 +98,7 @@ jobs:
       - name: Run web2exe
         if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
         shell: pwsh
-        working-directory: Restfox/packages/ui
+        working-directory: Restfox/packages/ui/dist
         run: |
           # Get product name from AssemblyInfo.cs as the file name
           $filename = ""
