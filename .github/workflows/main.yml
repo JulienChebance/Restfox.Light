@@ -31,25 +31,25 @@ jobs:
           echo "Local version = ${{ steps.localVersion.outputs.release }}"
 
       - name: Checkout Restfox sources
-        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         uses: actions/checkout@v5
         with:
           repository: flawiddsouza/Restfox
           path: Restfox
 
       - name: Use Node.js
-        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         uses: actions/setup-node@v5
         with:
           node-version: latest
 
       - name: Install dependencies
-        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         run: npm install
         working-directory: Restfox/packages/ui
 
       - name: Create local git tag
-        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         shell: pwsh
         run: |
           cd Restfox
@@ -59,19 +59,19 @@ jobs:
           git tag ${{ steps.distantVersion.outputs.release }}
 
       - name: Build UI
-        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         run: npm run build
         working-directory: Restfox/packages/ui
 
       - name: Add notranslate meta tag to index.html
-        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         shell: pwsh
         run: |
           $indexPath = "Restfox/packages/ui/dist/index.html"
           (Get-Content $indexPath) -replace '<head>', '<head><meta name="google" content="notranslate">' | Set-Content $indexPath
 
       - name: Copy and modify LICENSE
-        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         shell: pwsh
         run: |
           $src = "Restfox/LICENSE"
@@ -89,18 +89,19 @@ jobs:
           $output | Set-Content $dest
 
       - name: Download web2exe
-        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         shell: pwsh
         run: |
           Invoke-WebRequest -Uri "https://github.com/JulienChebance/web2exe/releases/latest/download/web2exe.zip" -OutFile "web2exe.zip"
 
       - name: Extract web2exe
-        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         shell: pwsh
         run: |
           Expand-Archive -Path "web2exe.zip" -DestinationPath "Restfox/packages/ui/dist" -Force
 
       - name: Customize AssemblyInfo.cs
+        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         shell: pwsh
         run: |
           $file = "Restfox/packages/ui/dist/AssemblyInfo.cs"
@@ -118,12 +119,13 @@ jobs:
             | Set-Content $file
             
       - name: List files in Restfox/packages/ui/dist
+        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         shell: pwsh
         run: |
           Get-ChildItem -Path "Restfox/packages/ui/dist"
 
       - name: Run web2exe
-        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         shell: pwsh
         working-directory: Restfox/packages/ui/dist
         run: |
@@ -151,7 +153,7 @@ jobs:
           # $resourcesArgs = $resources -join ' '
           $resourcesArgs = '/res:' + ((Get-ChildItem -Path .\ -Recurse -Exclude '*.exe', '*.cs', '*.bat' -File -Name | Select-String -Pattern '^\.' -NotMatch | ForEach-Object { '\"' + $_ + '\"' -replace '\\', '/' }) -Join ' /res:')
 
-          pwd
+          Write-Host $pwd
           Write-Host "Loaded resources: $resourcesArgs"
 
           $icon = ""
@@ -176,14 +178,14 @@ jobs:
           }
 
       - name: Compress
-        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         uses: vimtor/action-zip@v1.2
         with:
           files: Restfox/packages/ui/dist/LICENSE.txt Restfox/packages/ui/dist/Restfox.exe
           dest: Restfox.Light.zip
 
       - name: Release
-        if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
+        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.distantVersion.outputs.release }}
