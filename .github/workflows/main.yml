@@ -25,6 +25,10 @@ jobs:
         uses: pozetroninc/github-action-get-latest-release@master
         with:
           repository: JulienChebance/Restfox.Light
+      - name: Display versions
+        run: |
+          echo "Distant version = ${{ steps.distantVersion.outputs.release }}"
+          echo "Local version = ${{ steps.localVersion.outputs.release }}"
 
       - name: Checkout Restfox sources
         if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
@@ -44,14 +48,15 @@ jobs:
         run: npm install
         working-directory: Restfox/packages/ui
 
-      - name: Create git tag v0.40.0
+      - name: Create local git tag
         if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
         shell: pwsh
         run: |
           cd Restfox
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git tag v0.40.0
+          # The git tag is only required for Vite tool
+          git tag ${{ steps.distantVersion.outputs.release }}
 
       - name: Build UI
         if: ${{ steps.distantVersion.outputs.release }} != ${{ steps.localVersion.outputs.release }}
@@ -146,6 +151,7 @@ jobs:
           # $resourcesArgs = $resources -join ' '
           $resourcesArgs = '/res:' + ((Get-ChildItem -Path .\ -Recurse -Exclude '*.exe', '*.cs', '*.bat' -File -Name | Select-String -Pattern '^\.' -NotMatch | ForEach-Object { '\"' + $_ + '\"' -replace '\\', '/' }) -Join ' /res:')
 
+          pwd
           Write-Host "Loaded resources: $resourcesArgs"
 
           $icon = ""
