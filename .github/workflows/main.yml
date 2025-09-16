@@ -30,6 +30,7 @@ jobs:
           repository: flawiddsouza/Restfox
           excludes: prerelease, draft
       - id: local
+        name: Compare versions
         uses: pozetroninc/github-action-get-latest-release@master
         with:
           repository: JulienChebance/Restfox.Light
