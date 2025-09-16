@@ -1,8 +1,10 @@
 name: Create new Windows Light release
+
 on:
   workflow_dispatch:
   schedule:
     - cron: "50 3 * * *"
+
 env:
   APP_TITLE: "A powerful minimalistic HTTP client"
   APP_PRODUCT: "Restfox"
@@ -12,101 +14,86 @@ env:
   APP_KIOSK: "false"
   APP_MULTIPLEINSTANCE: "unique"
   APP_STATELESS: "false"
+  DIST_DIR: Restfox/packages/ui/dist
+
 jobs:
-  build:
-    runs-on: windows-latest
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      latest_version: ${{ steps.check.outputs.latest_version }}
+      latest_version_plain: ${{ steps.check.outputs.latest_version_plain }}
+      new_release: ${{ steps.check.outputs.new_release }}
     steps:
-      - id: distantVersion
+      - id: distant
         uses: pozetroninc/github-action-get-latest-release@master
         with:
           repository: flawiddsouza/Restfox
           excludes: prerelease, draft
-      - id: localVersion
+      - id: local
         uses: pozetroninc/github-action-get-latest-release@master
         with:
           repository: JulienChebance/Restfox.Light
 
+      - id: check
+        run: |
+          if [ "${{ steps.distant.outputs.release }}" != "${{ steps.local.outputs.release }}" ]; then
+            plain=$(echo "${{ steps.distant.outputs.release }}" | sed 's/^v//')
+            echo "latest_version=${{ steps.distant.outputs.release }}" >> $GITHUB_OUTPUT
+            echo "latest_version_plain=$plain" >> $GITHUB_OUTPUT
+            echo "new_release=true" >> $GITHUB_OUTPUT
+            echo "➡️ New release found: ${{ steps.distant.outputs.release }}"
+          else
+            echo "new_release=false" >> $GITHUB_OUTPUT
+            echo "✅ Already up to date"
+          fi
+
+  build-release:
+    runs-on: windows-latest
+    needs: check-version
+    if: needs.check-version.outputs.new_release == 'true'
+    steps:
       - name: Checkout Restfox sources
-        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         uses: actions/checkout@v5
         with:
           repository: flawiddsouza/Restfox
           path: Restfox
 
       - name: Use Node.js
-        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         uses: actions/setup-node@v5
         with:
           node-version: latest
 
       - name: Install dependencies
-        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
-        run: npm install
+        run: npm ci
         working-directory: Restfox/packages/ui
 
-      - name: Create local git tag
-        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
+      - name: Create git tag then build UI
         shell: pwsh
         run: |
           cd Restfox
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           # The git tag is only required for Vite tool
-          git tag ${{ steps.distantVersion.outputs.release }}
+          git tag ${{ needs.check-version.outputs.latest_version }}
+          cd packages\ui
+          npm run build
 
-      - name: Build UI
-        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
-        run: npm run build
-        working-directory: Restfox/packages/ui
-
-      - name: Add notranslate meta tag to index.html
-        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
-        shell: pwsh
-        run: |
-          $indexPath = "Restfox/packages/ui/dist/index.html"
-          (Get-Content $indexPath) -replace '<head>', '<head><meta name="google" content="notranslate">' | Set-Content $indexPath
-
-      - name: Copy and modify LICENSE
-        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
-        shell: pwsh
-        run: |
-          $src = "Restfox/LICENSE"
-          $dest = "Restfox/packages/ui/dist/LICENSE.txt"
-          Copy-Item $src $dest -Force
-
-          $lines = Get-Content $dest
-          $output = @()
-          foreach ($line in $lines) {
-            $output += $line
-            if ($line -match '^Copyright') {
-              $output += 'Copyright (c) 2024+ Julien Chebance`n'
-            }
-          }
-          $output | Set-Content $dest
-
-      - name: Download web2exe
-        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
+      - name: Download and extract web2exe
         shell: pwsh
         run: |
           Invoke-WebRequest -Uri "https://github.com/JulienChebance/web2exe/releases/latest/download/web2exe.zip" -OutFile "web2exe.zip"
-
-      - name: Extract web2exe
-        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
-        shell: pwsh
-        run: |
-          Expand-Archive -Path "web2exe.zip" -DestinationPath "Restfox/packages/ui/dist" -Force
+          Expand-Archive -Path "web2exe.zip" -DestinationPath "${{ env.DIST_DIR }}" -Force
 
       - name: Customize AssemblyInfo.cs
-        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         shell: pwsh
         run: |
-          $file = "Restfox/packages/ui/dist/AssemblyInfo.cs"
+          $file = "${{ env.DIST_DIR }}/AssemblyInfo.cs"
           (Get-Content $file) `
             -replace '(?<=AssemblyTitle\(")[^"]+(?="\))', "${{ env.APP_TITLE }}" `
             -replace '(?<=AssemblyProduct\(")[^"]+(?="\))', "${{ env.APP_PRODUCT }}" `
             -replace '(?<=AssemblyCopyright\(")[^"]+(?="\))', "${{ env.APP_COPYRIGHT }}" `
-            -replace '(?<=AssemblyVersion\(")[^"]+(?="\))', "${{ steps.distantVersion.outputs.release }}".TrimStart("v") `
-            -replace '(?<=AssemblyFileVersion\(")[^"]+(?="\))', "${{ steps.distantVersion.outputs.release }}.0".TrimStart("v") `
+            -replace '(?<=AssemblyVersion\(")[^"]+(?="\))', "${{ needs.check-version.outputs.latest_version_plain }}" `
+            -replace '(?<=AssemblyFileVersion\(")[^"]+(?="\))', "${{ needs.check-version.outputs.latest_version_plain }}.0" `
             -replace '(?<=SPAmode\().*(?=\))', "${{ env.APP_SPAMODE }}" `
             -replace '(?<=StartMaximized\().*(?=\))', "${{ env.APP_STARTMAXIMIZED }}" `
             -replace '(?<=Kiosk\().*(?=\))', "${{ env.APP_KIOSK }}" `
@@ -114,16 +101,31 @@ jobs:
             -replace '(?<=Stateless\().*(?=\))', "${{ env.APP_STATELESS }}" `
             | Set-Content $file
             
-      - name: List files in Restfox/packages/ui/dist
-        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
+      - name: Add notranslate meta tag to index.html
         shell: pwsh
         run: |
-          Get-ChildItem -Path "Restfox/packages/ui/dist"
+          $indexPath = "${{ env.DIST_DIR }}/index.html"
+          (Get-Content $indexPath) -replace '<head>', '<head><meta name="google" content="notranslate">' | Set-Content $indexPath
+
+      - name: Copy and modify LICENSE
+        shell: pwsh
+        run: |
+          Copy-Item "Restfox/LICENSE" "${{ env.DIST_DIR }}/LICENSE.txt" -Force
+          (Get-Content "${{ env.DIST_DIR }}/LICENSE.txt") |
+            ForEach-Object {
+              $_
+              if ($_ -match '^Copyright') {
+                'Copyright (c) 2024+ Julien Chebance'
+              }
+            } | Set-Content "${{ env.DIST_DIR }}/LICENSE.txt"
+
+      - name: List files in Restfox/packages/ui/dist
+        shell: pwsh
+        run: Get-ChildItem -Path "Restfox/packages/ui/dist"
 
       - name: Run web2exe
-        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
         shell: pwsh
-        working-directory: Restfox/packages/ui/dist
+        working-directory: ${{ env.DIST_DIR }}
         run: |
           # Get product name from AssemblyInfo.cs as the file name
           $filename = ""
@@ -165,17 +167,15 @@ jobs:
             Write-Error "CSC compilation failed with exit code $LASTEXITCODE"
           }
 
-      - name: Compress
-        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
+      - name: Create archive
         uses: vimtor/action-zip@v1.2
         with:
-          files: Restfox/packages/ui/dist/LICENSE.txt Restfox/packages/ui/dist/Restfox.exe
+          files: ${{ env.DIST_DIR }}/LICENSE.txt ${{ env.DIST_DIR }}/Restfox.exe
           dest: Restfox.Light.zip
 
-      - name: Release
-        if: ${{ steps.distantVersion.outputs.release != steps.localVersion.outputs.release }}
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.distantVersion.outputs.release }}
-          name: "Restfox Light ${{ steps.distantVersion.outputs.release }}"
+          tag_name: ${{ needs.check-version.outputs.latest_version }}
+          name: "Restfox Light ${{ needs.check-version.outputs.latest_version }}"
           files: Restfox.Light.zip
