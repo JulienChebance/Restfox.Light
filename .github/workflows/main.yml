@@ -108,11 +108,11 @@ jobs:
             -replace '(?<=Stateless\().*(?=\))', "${{ env.APP_STATELESS }}" `
             | Set-Content $file
             
-      - name: Add notranslate meta tag to index.html
+      - name: Add notranslate meta tag to index.html, and hide Github Star
         shell: pwsh
         run: |
           $indexPath = "${{ env.DIST_DIR }}/index.html"
-          (Get-Content $indexPath) -replace '<head>', '<head><meta name="google" content="notranslate">' | Set-Content $indexPath
+          (Get-Content $indexPath) -replace '<head>', '<head><meta name="google" content="notranslate"><style>.github-star { display: none; }</style>' | Set-Content $indexPath
 
       - name: Copy and modify LICENSE
         shell: pwsh
