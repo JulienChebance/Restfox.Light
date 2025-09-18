@@ -50,6 +50,8 @@ jobs:
 
   build-release:
     runs-on: windows-latest
+    permissions:
+      contents: write
     needs: check-version
     if: needs.check-version.outputs.new_release == 'true'
     steps:
