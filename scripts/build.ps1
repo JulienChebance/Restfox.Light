@@ -8,8 +8,8 @@ Write-Host "🔧 Starting C# compilation with web2exe..."
 $productName = $productName -replace "[:/\\?]", ""
 
 # Gzip files
-$extensions = @(".html", ".css", ".js", ".ico", ".json", ".mjs", ".svg", ".ttf", ".txt", ".woff2")
-Get-ChildItem -Recurse -File | Where-Object {
+$extensions = @(".html", ".css", ".js", ".json", ".mjs", ".svg", ".ttf", ".txt", ".woff2")
+Get-ChildItem -Recurse -File -Exclude "LICENSE.txt" | Where-Object {
 	$extensions -contains $_.Extension.ToLower()
 } | ForEach-Object {
 	$inputFile = $_.FullName
