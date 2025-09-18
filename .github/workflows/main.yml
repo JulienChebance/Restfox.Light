@@ -152,6 +152,8 @@ jobs:
       actions: write
     steps:
       - name: Re-enable workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: sh
         run: |
           case "${GITHUB_WORKFLOW_REF:?}" in
