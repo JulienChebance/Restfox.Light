@@ -128,10 +128,6 @@ jobs:
               }
             } | Set-Content "${{ env.DIST_DIR }}/LICENSE.txt"
 
-      - name: List files in env.DIST_DIR
-        shell: pwsh
-        run: Get-ChildItem -Path "${{ env.DIST_DIR }}"
-
       - name: Run web2exe compiler
         shell: pwsh
         working-directory: ${{ env.DIST_DIR }}
