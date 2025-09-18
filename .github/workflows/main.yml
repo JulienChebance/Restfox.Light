@@ -53,6 +53,12 @@ jobs:
     needs: check-version
     if: needs.check-version.outputs.new_release == 'true'
     steps:
+      - name: Checkout build scripts
+        uses: actions/checkout@v5
+        with:
+          repository: JulienChebance/Restfox.Light
+          path: build
+
       - name: Checkout Restfox sources
         uses: actions/checkout@v5
         with:
@@ -102,11 +108,11 @@ jobs:
             -replace '(?<=Stateless\().*(?=\))', "${{ env.APP_STATELESS }}" `
             | Set-Content $file
             
-      - name: Add notranslate meta tag to index.html
+      - name: Add notranslate meta tag to index.html, and hide Github Star
         shell: pwsh
         run: |
           $indexPath = "${{ env.DIST_DIR }}/index.html"
-          (Get-Content $indexPath) -replace '<head>', '<head><meta name="google" content="notranslate">' | Set-Content $indexPath
+          (Get-Content $indexPath) -replace '<head>', '<head><meta name="google" content="notranslate"><style>.github-star { display: none; }</style>' | Set-Content $indexPath
 
       - name: Copy and modify LICENSE
         shell: pwsh
@@ -124,49 +130,10 @@ jobs:
         shell: pwsh
         run: Get-ChildItem -Path "Restfox/packages/ui/dist"
 
-      - name: Run web2exe
+      - name: Run web2exe compiler
         shell: pwsh
         working-directory: ${{ env.DIST_DIR }}
-        run: |
-          # Get product name from AssemblyInfo.cs as the file name
-          $filename = ""
-          Get-Content .\AssemblyInfo.cs | ForEach-Object {
-            if ($_ -match '^\[assembly:\s*AssemblyProduct\("(.+)"\)\]') {
-              $filename = $matches[1]
-            }
-          }
-          if ([string]::IsNullOrEmpty($filename)) {
-            $filename = "web2exe"
-          }
-
-          # Remove unauthorized characters
-          $filename = $filename -replace "[:/\\?]", ""
-
-          # Générer la liste des ressources
-          $resources = '/res:' + ((Get-ChildItem -Path .\ -Recurse -Exclude '*.exe', '*.cs', '*.bat' -File -Name | Select-String -Pattern '^\.' -NotMatch | ForEach-Object { '"' + $_ + '"' -replace '\\', '/' }) -Join ' /res:')
-
-          Write-Host "Loaded resources: $resources"
-
-          $icon = ""
-          if (Test-Path ".\favicon.ico") {
-            $icon = "/win32icon:favicon.ico"
-          }
-
-          # Compilation avec CSC
-          $outFile = "$filename.exe"
-          $csFiles = Get-ChildItem -Path . -Filter *.cs | ForEach-Object { $_.FullName }
-          $csFilesArgs = $csFiles -join ' '
-
-          $cmd = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe -out:`"$outFile`" $csFilesArgs -optimize -nologo $icon $resources"
-          Write-Host "Running: $cmd"
-          Invoke-Expression $cmd
-
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "The following file has been successfully created:"
-            Write-Host $outFile
-          } else {
-            Write-Error "CSC compilation failed with exit code $LASTEXITCODE"
-          }
+        run: pwsh "${{ github.workspace }}/build/scripts/build.ps1" -productName "${{ env.APP_PRODUCT }}"
 
       - name: Create archive
         uses: vimtor/action-zip@v1.2
