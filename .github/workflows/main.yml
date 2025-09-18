@@ -108,7 +108,7 @@ jobs:
             -replace '(?<=Stateless\().*(?=\))', "${{ env.APP_STATELESS }}" `
             | Set-Content $file
             
-      - name: Add notranslate meta tag to index.html, and hide Github Star
+      - name: Add notranslate meta tag to index.html, and hide Github Star element
         shell: pwsh
         run: |
           $indexPath = "${{ env.DIST_DIR }}/index.html"
@@ -126,9 +126,9 @@ jobs:
               }
             } | Set-Content "${{ env.DIST_DIR }}/LICENSE.txt"
 
-      - name: List files in Restfox/packages/ui/dist
+      - name: List files in env.DIST_DIR
         shell: pwsh
-        run: Get-ChildItem -Path "Restfox/packages/ui/dist"
+        run: Get-ChildItem -Path "${{ env.DIST_DIR }}"
 
       - name: Run web2exe compiler
         shell: pwsh
