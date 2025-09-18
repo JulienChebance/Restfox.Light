@@ -26,6 +26,9 @@ Get-ChildItem -Recurse -File -Exclude "LICENSE.txt" | Where-Object {
 	Remove-Item $inputFile -Force
 }
 
+# List files
+Get-ChildItem -Path "."
+
 # Collect resources (all non-exe, non-cs, non-bat files)
 $resources = '/res:' + ((Get-ChildItem -Recurse -Exclude '*.exe', '*.cs', '*.bat' -File -Name | Select-String -Pattern '^\.' -NotMatch | ForEach-Object { '"' + $_ + '"' -replace '\\', '/' }) -Join ' /res:')
 Write-Host "📦 Loaded resources: $resources"
