@@ -110,11 +110,11 @@ jobs:
             -replace '(?<=Stateless\().*(?=\))', "${{ env.APP_STATELESS }}" `
             | Set-Content $file
             
-      - name: Add notranslate meta tag to index.html, and hide Github Star element
+      - name: Add notranslate meta tag to index.html, use injector.js and hide Github Star element
         shell: pwsh
         run: |
           $indexPath = "${{ env.DIST_DIR }}/index.html"
-          (Get-Content $indexPath) -replace '<head>', '<head><meta name="google" content="notranslate"><style>.github-star { display: none; }</style>' | Set-Content $indexPath
+          (Get-Content $indexPath) -replace '<head>', '<head><meta name="google" content="notranslate"><script src="injector.js" async></script><style>.github-star { display: none; }</style>' | Set-Content $indexPath
 
       - name: Copy and modify LICENSE
         shell: pwsh
