@@ -72,8 +72,14 @@ jobs:
         with:
           node-version: latest
 
+      - name: Configure GitHub HTTPS access
+        shell: pwsh
+        run: |
+          git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --allow-git=all
         working-directory: Restfox/packages/ui
 
       - name: Create git tag then build UI
